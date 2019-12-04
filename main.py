@@ -1,7 +1,6 @@
-#Max travel distance 2000km
-
 import csv
 from math import radians, cos, sin, asin, sqrt
+from itertools import islice
 
 def haversine(lat1, lon1, lat2, lon2):
     """
@@ -19,38 +18,67 @@ def haversine(lat1, lon1, lat2, lon2):
     r = 6371 # Radius of earth in kilometers.
     return int(c * r)
 
-
-lat1, lon1 = 51.355468, 11.100790 #Starting location for testing
 beers, breweries, geocodes = 'beers.csv', 'breweries.csv', 'geocodes.csv'
 
-
 #Make geocodes dictionary from csv
-geo_reader = csv.reader(open(geocodes, 'r'))
+geo_reader = csv.reader(open(geocodes, 'r', encoding='utf-8'))
 geocodes_dict = {}
-for row in geo_reader:
-   k, v1, v2, v3, v4 = row
-   geocodes_dict[v1] = [v2, v3]
-del geocodes_dict['brewery_id']
-
+row_num = 0
+for row in islice(geo_reader, 1, None):
+    k, v1, v2, v3, v4 = row
+    geocodes_dict[int(v1)] = [v2, v3]
 
 #Make breweries dictionary from csv
 br_reader = csv.reader(open(breweries, 'r', encoding='utf-8'))
 breweries_dict = {}
-for row in br_reader:
+for row in islice(br_reader, 1, None):
    k, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13 = row
-   breweries_dict[k] = v1
-del breweries_dict['id']
-
+   breweries_dict[int(k)] = v1
 
 #Make beers dictionary from csv
 be_reader = csv.reader(open(beers, 'r', encoding='utf-8'))
 beers_dict = {}
-for row in be_reader:
+for row in islice(be_reader, 1, None):
    k, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12 = row
-   beers_dict[v1] = v2
-del beers_dict['brewery_id']
+   beers_dict[int(v1)] = v2
 
-
-for x, y in geocodes_dict.items():
-    if haversine(lat1, lon1, float(y[0]), float(y[1]))<200:
-        print('Brewerie: ', breweries_dict[x], '    Beer: ', beers_dict[x])
+start_lat1, start_lon1 = '51.355468', '11.100790'
+lat1, lon1 = '51.355468', '11.100790' #Starting location for testing
+current_min = 0
+haversine_list = []
+travel_list = []
+travel_list_sum = 0
+distance_to_start = 0
+while True:
+    for id, geo in geocodes_dict.items():
+        haversine_list.append([haversine(float(lat1), float(lon1), float(geo[0]), float(geo[1])), id])
+    current_min = sorted(haversine_list)[0]
+    lat1, lon1 = geocodes_dict[current_min[1]]
+    del geocodes_dict[current_min[1]]
+    #print(breweries_dict[current_min[1]])
+    distance_to_start = haversine(float(lat1), float(lon1), float(start_lat1), float(start_lon1))
+    #print('Distance to start', distance_to_start)
+    #print(travel_list)
+    if ((travel_list_sum+current_min[0]) + distance_to_start)< 2000:
+        #print((travel_list_sum+current_min[0]) + distance_to_start)
+        travel_list.append(current_min)
+        for hav, id in travel_list:
+            travel_list_sum+=hav
+        #print('travel_list', travel_list)
+        #print('travel_list_sum', travel_list_sum)
+    else:
+        travel_list_sum = travel_list_sum-travel_list[-1][0]
+        try:
+            for hav, id in travel_list:
+                print('Brewerie: ', breweries_dict[id], '    Beer: ', beers_dict[id])
+        except KeyError:
+            print('')
+        #print('travel_list_sum', travel_list_sum)
+        #print('distance_to_start', distance_to_start)
+        #travel_list_sum+=distance_to_start
+        #print('travel_list_sum', travel_list_sum)
+        travel_list[-1] = ['Start Location']
+        print('travel_list', travel_list)
+        print('Total distance: ', travel_list_sum, 'km.')
+        break
+    haversine_list = []
