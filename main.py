@@ -1,4 +1,4 @@
-import csv
+import csv, time
 from math import radians, cos, sin, asin, sqrt
 from itertools import islice
 
@@ -19,6 +19,10 @@ def haversine(lat1, lon1, lat2, lon2):
     return int(c * r)
 
 def main():
+
+    start_lat = input('Please enter the latitude:')
+    start_lon = input('Please enter the longitude:')
+    start_time = time.perf_counter()
     beers, breweries, geocodes = 'beers.csv', 'breweries.csv', 'geocodes.csv'
 
     #Make geocodes dictionary from csv
@@ -43,8 +47,8 @@ def main():
        k, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12 = row
        beers_dict[int(v1)] = v2
 
-    start_lat, start_lon = '51.355468', '11.100790'
-    lat, lon = '51.355468', '11.100790' #Starting location for testing
+    lat = start_lat
+    lon = start_lon
     current_min = 0
     haversine_list = []
     travel_list = []
@@ -73,17 +77,23 @@ def main():
         haversine_list = []
 
     #Display the result
-    print('Travel results:')
-    print('-> HOME: ', start_lat, start_lon)
-    str_tmp = '-> [{0}] {1} {2} Distance: {3} km.'
-    for hav, id in travel_list:
-        beers+=1
-        print(str_tmp.format(id, breweries_dict[id], geocodes_dict[id], hav))
-    print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
-    print('\nTotal distance: ', travel_list_sum, 'km.\n')
-    print('Collected beer types:')
-    for hav, id in travel_list:
-        print('     ', beers_dict[id])
+    if travel_list!=[]:
+        print('Travel results:')
+        print('-> HOME: ', start_lat, start_lon)
+        str_tmp = '-> [{0}] {1} {2} Distance: {3} km.'
+        for hav, id in travel_list:
+            print(str_tmp.format(id, breweries_dict[id], geocodes_dict[id], hav))
+        print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
+        print('\nTotal distance: ', travel_list_sum, 'km.\n')
+        print('Collected beer types:')
+        try:
+            for hav, id in travel_list:
+                print('     ', beers_dict[id])
+        except KeyError:
+            pass
+    else:
+        print('Sorry, no breweries within 2000km from this starting point.')
+    print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
 
 if __name__ == '__main__':
     main()
