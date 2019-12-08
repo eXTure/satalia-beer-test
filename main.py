@@ -1,4 +1,4 @@
-import csv, time
+import csv, time, sqlite3, pandas
 from math import radians, cos, sin, asin, sqrt
 from itertools import islice
 
@@ -18,12 +18,36 @@ def haversine(lat1, lon1, lat2, lon2):
     r = 6371 # Radius of earth in kilometers.
     return int(c * r)
 
+def beer_db():
+
+    beers, breweries, geocodes = 'beers.csv', 'breweries.csv', 'geocodes.csv'
+
+    conn = sqlite3.connect('beer.db')
+    c = conn.cursor()
+    pandas.read_csv(beers).to_sql('beers', conn, if_exists='replace', index=False)
+    pandas.read_csv(breweries).to_sql('breweries', conn, if_exists='replace', index=False)
+    pandas.read_csv(geocodes).to_sql('geocodes', conn, if_exists='replace', index=False)
+    #print(c.fetchall())
+    c.execute("SELECT name FROM beers WHERE brewery_id=10")
+    print(c.fetchall())
+
+
 def main():
 
-    start_lat = input('Please enter the latitude:')
-    start_lon = input('Please enter the longitude:')
-    start_time = time.perf_counter()
     beers, breweries, geocodes = 'beers.csv', 'breweries.csv', 'geocodes.csv'
+
+    conn = sqlite3.connect('beer.db')
+    c = conn.cursor()
+    pandas.read_csv(beers).to_sql('beers', conn, if_exists='replace', index=False)
+    pandas.read_csv(breweries).to_sql('breweries', conn, if_exists='replace', index=False)
+    pandas.read_csv(geocodes).to_sql('geocodes', conn, if_exists='replace', index=False)
+    #print(c.fetchall())
+    #c.execute("SELECT name FROM beers WHERE brewery_id=10")
+    #print(c.fetchall())
+
+    start_lat = '51.355468' #input('Please enter the latitude:')
+    start_lon = '11.100790' #input('Please enter the longitude:')
+    start_time = time.perf_counter()
 
     #Make geocodes dictionary from csv
     geo_reader = csv.reader(open(geocodes, 'r', encoding='utf-8'))
@@ -56,13 +80,17 @@ def main():
     distance_to_start = 0
     already_visited = []
     while True:
-        for id, geo in geocodes_dict.items():
+        for id, lat1, lon1 in c.execute("SELECT brewery_id, latitude, longitude FROM geocodes"):
             if id not in already_visited:
-                haversine_list.append([haversine(float(lat), float(lon), float(geo[0]), float(geo[1])), id])
+                haversine_list.append([haversine(float(lat), float(lon), float(lat1), float(lon1)), id])
             else:
                 continue
+
         current_min = sorted(haversine_list)[0]
-        lat, lon = geocodes_dict[current_min[1]]
+        c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(current_min[1]), ))
+        lat = c.fetchone()[0]
+        c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(current_min[1]), ))
+        lon = c.fetchone()[0]
         already_visited.append(current_min[1])
         distance_to_start = haversine(float(lat), float(lon), float(start_lat), float(start_lon))
         if ((travel_list_sum+current_min[0]) + distance_to_start) < 2000:
@@ -97,3 +125,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    #beer_db()
