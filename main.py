@@ -1,3 +1,5 @@
+import os
+os.system('pip install -r requirements.txt')
 import csv, time, sqlite3, pandas
 from math import radians, cos, sin, asin, sqrt
 from itertools import islice
@@ -68,7 +70,7 @@ def main():
 
         print('\nFound {} beer factories:'.format(len(travel_list)))
         print('-> HOME: ', start_lat, start_lon)
-        str_tmp = '-> [{0}] {1} {2} {3} Distance: {4} km.'
+        str_tmp = '-> [{0}] {1}: {2} {3} Distance: {4} km.'
         for hav, id in travel_list:
             c.execute("SELECT name FROM breweries WHERE id=?", (id, ))
             breweries_qr = c.fetchone()
@@ -91,11 +93,14 @@ def main():
         for hav, id in travel_list:
             c.execute("SELECT name FROM beers WHERE brewery_id=?", (id, ))
             beers_qr = c.fetchall()
-            if len(beers_qr)>1:
-                for beer in beers_qr:
-                    print('     ->', beer[0])
-            else:
-                print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
+            try:
+                if len(beers_qr)>1:
+                    for beer in beers_qr:
+                        print('     ->', beer[0])
+                else:
+                    print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
+            except Exception as e:
+                print('')
     else:
         print('Sorry, no breweries within 2000km from this starting location.')
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
