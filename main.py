@@ -54,16 +54,24 @@ def main():
         lon = c.fetchone()[0]
         already_visited.append(current_min[1])
         distance_to_start = haversine(float(lat), float(lon), float(start_lat), float(start_lon))
-        if ((travel_list_sum+current_min[0]) + distance_to_start) < 2000:
+        if (travel_list_sum + current_min[0] + distance_to_start) < 2000:
             travel_list.append(current_min)
             sum = 0
             for hav, id in travel_list:
                 sum+=hav
             travel_list_sum = sum
         else:
-            travel_list_sum = travel_list_sum+distance_to_start
             break
         haversine_list = []
+
+    #Make sure final travel list does not exceed 2000km
+    while (travel_list_sum+distance_to_start)>2000:
+        del travel_list[-1]
+        c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
+        lat2 = c.fetchone()[0]
+        c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
+        lon2 = c.fetchone()[0]
+        distance_to_start = haversine(float(lat2), float(lon2), float(start_lat), float(start_lon))
 
     #Display the result
     if travel_list!=[]:
@@ -78,7 +86,7 @@ def main():
             geocodes_qr = c.fetchone()
             print(str_tmp.format(id, breweries_qr[0], geocodes_qr[0], geocodes_qr[1], hav))
         print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
-        print('\nTotal distance: ', travel_list_sum, 'km.\n')
+        print('\nTotal distance: ', (travel_list_sum+distance_to_start), 'km.\n')
         beer_count = 0
         for hav, id in travel_list:
             c.execute("SELECT name FROM beers WHERE brewery_id=?", (id, ))
@@ -100,7 +108,7 @@ def main():
                 else:
                     print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
             except Exception as e:
-                print('')
+                pass
     else:
         print('Sorry, no breweries within 2000km from this starting location.')
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
