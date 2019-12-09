@@ -18,58 +18,17 @@ def haversine(lat1, lon1, lat2, lon2):
     r = 6371 # Radius of earth in kilometers.
     return int(c * r)
 
-def beer_db():
-
-    beers, breweries, geocodes = 'beers.csv', 'breweries.csv', 'geocodes.csv'
-
-    conn = sqlite3.connect('beer.db')
-    c = conn.cursor()
-    pandas.read_csv(beers).to_sql('beers', conn, if_exists='replace', index=False)
-    pandas.read_csv(breweries).to_sql('breweries', conn, if_exists='replace', index=False)
-    pandas.read_csv(geocodes).to_sql('geocodes', conn, if_exists='replace', index=False)
-    #print(c.fetchall())
-    c.execute("SELECT name FROM beers WHERE brewery_id=10")
-    print(c.fetchall())
-
-
 def main():
 
-    beers, breweries, geocodes = 'beers.csv', 'breweries.csv', 'geocodes.csv'
+    start_lat = input('Please enter the latitude:')
+    start_lon = input('Please enter the longitude:')
+    start_time = time.perf_counter()
 
     conn = sqlite3.connect('beer.db')
     c = conn.cursor()
-    pandas.read_csv(beers).to_sql('beers', conn, if_exists='replace', index=False)
-    pandas.read_csv(breweries).to_sql('breweries', conn, if_exists='replace', index=False)
-    pandas.read_csv(geocodes).to_sql('geocodes', conn, if_exists='replace', index=False)
-    #print(c.fetchall())
-    #c.execute("SELECT name FROM beers WHERE brewery_id=10")
-    #print(c.fetchall())
-
-    start_lat = '51.355468' #input('Please enter the latitude:')
-    start_lon = '11.100790' #input('Please enter the longitude:')
-    start_time = time.perf_counter()
-
-    #Make geocodes dictionary from csv
-    geo_reader = csv.reader(open(geocodes, 'r', encoding='utf-8'))
-    geocodes_dict = {}
-    row_num = 0
-    for row in islice(geo_reader, 1, None):
-        k, v1, v2, v3, v4 = row
-        geocodes_dict[int(v1)] = [v2, v3]
-
-    #Make breweries dictionary from csv
-    br_reader = csv.reader(open(breweries, 'r', encoding='utf-8'))
-    breweries_dict = {}
-    for row in islice(br_reader, 1, None):
-       k, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13 = row
-       breweries_dict[int(k)] = v1
-
-    #Make beers dictionary from csv
-    be_reader = csv.reader(open(beers, 'r', encoding='utf-8'))
-    beers_dict = {}
-    for row in islice(be_reader, 1, None):
-       k, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12 = row
-       beers_dict[int(v1)] = v2
+    pandas.read_csv('beers.csv').to_sql('beers', conn, if_exists='replace', index=False)
+    pandas.read_csv('breweries.csv').to_sql('breweries', conn, if_exists='replace', index=False)
+    pandas.read_csv('geocodes.csv').to_sql('geocodes', conn, if_exists='replace', index=False)
 
     lat = start_lat
     lon = start_lon
@@ -106,23 +65,40 @@ def main():
 
     #Display the result
     if travel_list!=[]:
-        print('Travel results:')
+
+        print('\nFound {} beer factories:'.format(len(travel_list)))
         print('-> HOME: ', start_lat, start_lon)
-        str_tmp = '-> [{0}] {1} {2} Distance: {3} km.'
+        str_tmp = '-> [{0}] {1} {2} {3} Distance: {4} km.'
         for hav, id in travel_list:
-            print(str_tmp.format(id, breweries_dict[id], geocodes_dict[id], hav))
+            c.execute("SELECT name FROM breweries WHERE id=?", (id, ))
+            breweries_qr = c.fetchone()
+            c.execute("SELECT latitude, longitude FROM geocodes WHERE brewery_id=?", (id, ))
+            geocodes_qr = c.fetchone()
+            print(str_tmp.format(id, breweries_qr[0], geocodes_qr[0], geocodes_qr[1], hav))
         print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
         print('\nTotal distance: ', travel_list_sum, 'km.\n')
-        print('Collected beer types:')
-        try:
-            for hav, id in travel_list:
-                print('     ', beers_dict[id])
-        except KeyError:
-            pass
+        beer_count = 0
+        for hav, id in travel_list:
+            c.execute("SELECT name FROM beers WHERE brewery_id=?", (id, ))
+            beers_qr = c.fetchall()
+            for beer in beers_qr:
+                if len(beer)>1:
+                    for i in beer:
+                        beer_count+=1
+                else:
+                    beer_count+=1
+        print('Collected {} beer types:'.format(beer_count))
+        for hav, id in travel_list:
+            c.execute("SELECT name FROM beers WHERE brewery_id=?", (id, ))
+            beers_qr = c.fetchall()
+            if len(beers_qr)>1:
+                for beer in beers_qr:
+                    print('     ->', beer[0])
+            else:
+                print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
     else:
-        print('Sorry, no breweries within 2000km from this starting point.')
+        print('Sorry, no breweries within 2000km from this starting location.')
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
 
 if __name__ == '__main__':
     main()
-    #beer_db()
