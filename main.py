@@ -47,7 +47,13 @@ def main():
             else:
                 continue
 
+        c.execute("SELECT name FROM beers WHERE brewery_id=?", (sorted(haversine_list)[0][1], ))
+        shortest_distance = c.fetchall()
+        c.execute("SELECT name FROM beers WHERE brewery_id=?", (sorted(haversine_list)[1][1], ))
+        second_shortest_distance = c.fetchall()
         current_min = sorted(haversine_list)[0]
+        if (len(second_shortest_distance)>len(shortest_distance)) and (len(second_shortest_distance)<(len(shortest_distance)*2)):
+            current_min = sorted(haversine_list)[1]
         c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(current_min[1]), ))
         lat = c.fetchone()[0]
         c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(current_min[1]), ))
@@ -65,13 +71,16 @@ def main():
         haversine_list = []
 
     #Make sure final travel list does not exceed 2000km
-    while (travel_list_sum+distance_to_start)>2000:
-        del travel_list[-1]
-        c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
-        lat2 = c.fetchone()[0]
-        c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
-        lon2 = c.fetchone()[0]
-        distance_to_start = haversine(float(lat2), float(lon2), float(start_lat), float(start_lon))
+    if travel_list!=[]:
+        while (travel_list_sum+distance_to_start)>2000:
+            del travel_list[-1]
+            c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
+            lat2 = c.fetchone()[0]
+            c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
+            lon2 = c.fetchone()[0]
+            distance_to_start = haversine(float(lat2), float(lon2), float(start_lat), float(start_lon))
+    else:
+        pass
 
     #Display the result
     if travel_list!=[]:
@@ -84,7 +93,10 @@ def main():
             breweries_qr = c.fetchone()
             c.execute("SELECT latitude, longitude FROM geocodes WHERE brewery_id=?", (id, ))
             geocodes_qr = c.fetchone()
-            print(str_tmp.format(id, breweries_qr[0], geocodes_qr[0], geocodes_qr[1], hav))
+            breweries_qr_str = str(breweries_qr[0])
+            if len(breweries_qr_str)>23:
+                breweries_qr_str = breweries_qr_str[:23] + '...'
+            print(str_tmp.format(id, breweries_qr_str, geocodes_qr[0], geocodes_qr[1], hav))
         print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
         print('\nTotal distance: ', (travel_list_sum+distance_to_start), 'km.\n')
         beer_count = 0
