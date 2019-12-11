@@ -1,6 +1,6 @@
 import os
 os.system('pip install -r requirements.txt')
-import csv, time, sqlite3, pandas
+import csv, time, sqlite3, pandas, webbrowser
 from math import radians, cos, sin, asin, sqrt
 from itertools import islice
 
@@ -124,6 +124,23 @@ def main():
     else:
         print('Sorry, no breweries within 2000km from this starting location.')
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
+    print('\nWould you like to see the travel route in Google Maps?(y/n)')
+    question = input()
+    if question.lower()=='y':
+        web_str = 'http://www.google.com/maps/dir/'
+        geocodes_list = []
+        for hav, id in travel_list:
+            c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(id), ))
+            geo1 = c.fetchone()[0]
+            c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(id), ))
+            geo2 = c.fetchone()[0]
+            geocodes_list.append((geo1, geo2))
+        geocodes_list.append(geocodes_list[0])
+        for geo in geocodes_list:
+            web_str+=str(geo[0])+','+str(geo[1])+'/'
+        webbrowser.open(web_str)
+    else:
+        pass
 
 if __name__ == '__main__':
     main()
