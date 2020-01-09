@@ -73,8 +73,16 @@ def main():
         else:
             break
         haversine_list = []
+        max_travel_distance_check()
+        display_result()
 
-    #Make sure final travel list does not exceed 2000km
+def get_data(arg):
+    """Get data from sql"""
+    pass
+
+def max_travel_distance_check():
+    """Make sure final travel list does not exceed 2000km"""
+
     if travel_list!=[]:
         while (travel_list_sum+distance_to_start)>2000:
             del travel_list[-1]
@@ -86,9 +94,11 @@ def main():
     else:
         pass
 
-    #Display the result
-    if travel_list!=[]:
 
+def display_result():
+    """Display the result"""
+
+    if travel_list!=[]:
         print('\nFound {} beer factories:'.format(len(travel_list)))
         print('-> HOME: ', start_lat, start_lon)
         str_tmp = '-> [{0}] {1}: {2} {3} Distance: {4} km.'
