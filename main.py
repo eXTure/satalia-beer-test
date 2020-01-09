@@ -1,4 +1,4 @@
-import os
+import os, sys
 #os.system('pip install -r requirements.txt')
 import csv, time, sqlite3, pandas, webbrowser, argparse
 from math import radians, cos, sin, asin, sqrt
@@ -19,6 +19,8 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * asin(sqrt(a))
     r = 6371 # Radius of earth in kilometers.
     return int(c * r)
+
+start_time = time.perf_counter()
 
 def main():
 
@@ -73,15 +75,16 @@ def main():
         else:
             break
         haversine_list = []
-        max_travel_distance_check()
-        display_result()
+        max_travel_distance_check(travel_list, travel_list_sum, distance_to_start)
+        display_result(travel_list, start_lat, start_lon, c, travel_list_sum, distance_to_start, time)
 
 def get_data(arg):
     """Get data from sql"""
     pass
 
-def max_travel_distance_check():
+def max_travel_distance_check(travel_list, travel_list_sum, distance_to_start):
     """Make sure final travel list does not exceed 2000km"""
+
 
     if travel_list!=[]:
         while (travel_list_sum+distance_to_start)>2000:
@@ -95,7 +98,7 @@ def max_travel_distance_check():
         pass
 
 
-def display_result():
+def display_result(travel_list, start_lat, start_lon, c, distance_to_start, travel_list_sum, time):
     """Display the result"""
 
     if travel_list!=[]:
@@ -137,6 +140,7 @@ def display_result():
                 pass
     else:
         print('Sorry, no breweries within 2000km from this starting location.')
+
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
     print('\nWould you like to see the travel route in Google Maps?(y/n)')
     question = input()
@@ -154,7 +158,7 @@ def display_result():
             web_str+=str(geo[0])+','+str(geo[1])+'/'
         webbrowser.open(web_str)
     else:
-        pass
+        exit()
 
 if __name__ == '__main__':
     main()
