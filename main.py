@@ -1,6 +1,6 @@
 import os
-os.system('pip install -r requirements.txt')
-import csv, time, sqlite3, pandas, webbrowser
+#os.system('pip install -r requirements.txt')
+import csv, time, sqlite3, pandas, webbrowser, argparse
 from math import radians, cos, sin, asin, sqrt
 from itertools import islice
 
@@ -22,9 +22,13 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def main():
 
-    start_lat = input('Please enter the latitude:')
-    start_lon = input('Please enter the longitude:')
+    parser = argparse.ArgumentParser(description='Enter coordinates')
+    parser.add_argument('lat', type=str, help='Latitude')
+    parser.add_argument('lon', type=str, help='Longitude')
+    args = parser.parse_args()
     start_time = time.perf_counter()
+    start_lat = args.lat
+    start_lon = args.lon
 
     conn = sqlite3.connect('beer.db')
     c = conn.cursor()
