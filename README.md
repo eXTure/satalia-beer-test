@@ -14,5 +14,5 @@ Features:
   python main.py latitude longitude
   ```
   
-  **Then enter coordinates as requested and later chose whether you want to export the result**
+  **Later chose whether you want to export the result to browser**
   
