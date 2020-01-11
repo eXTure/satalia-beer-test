@@ -1,6 +1,4 @@
-import os, sys
-#os.system('pip install -r requirements.txt')
-import csv, time, sqlite3, pandas, webbrowser, argparse
+import sys, csv, time, sqlite3, pandas, webbrowser, argparse
 from math import radians, cos, sin, asin, sqrt
 from itertools import islice
 
@@ -22,6 +20,22 @@ def haversine(lat1, lon1, lat2, lon2):
 
 start_time = time.perf_counter()
 
+#Initiate sql database
+conn = sqlite3.connect('beer.db')
+c = conn.cursor()
+pandas.read_csv('beers.csv').to_sql('beers', conn, if_exists='replace', index=False)
+pandas.read_csv('breweries.csv').to_sql('breweries', conn, if_exists='replace', index=False)
+pandas.read_csv('geocodes.csv').to_sql('geocodes', conn, if_exists='replace', index=False)
+
+def get_data(fetch, select_d, from_d, where_d, id_d):
+    """Get data from sql"""
+    sql_string = 'SELECT ' + str(select_d) + ' FROM ' + str(from_d) + ' WHERE ' + str(where_d) + ' = ' + str(id_d)
+    c.execute(sql_string)
+    if fetch==0:
+        return c.fetchall()
+    else:
+        return c.fetchone()
+
 def main():
 
     parser = argparse.ArgumentParser(description='Enter coordinates')
@@ -31,12 +45,6 @@ def main():
     start_time = time.perf_counter()
     start_lat = args.lat
     start_lon = args.lon
-
-    conn = sqlite3.connect('beer.db')
-    c = conn.cursor()
-    pandas.read_csv('beers.csv').to_sql('beers', conn, if_exists='replace', index=False)
-    pandas.read_csv('breweries.csv').to_sql('breweries', conn, if_exists='replace', index=False)
-    pandas.read_csv('geocodes.csv').to_sql('geocodes', conn, if_exists='replace', index=False)
 
     lat = start_lat
     lon = start_lon
@@ -53,17 +61,13 @@ def main():
             else:
                 continue
 
-        c.execute("SELECT name FROM beers WHERE brewery_id=?", (sorted(haversine_list)[0][1], ))
-        shortest_distance = c.fetchall()
-        c.execute("SELECT name FROM beers WHERE brewery_id=?", (sorted(haversine_list)[1][1], ))
-        second_shortest_distance = c.fetchall()
+        shortest_distance = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[0][1]))
+        second_shortest_distance = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[1][1]))
         current_min = sorted(haversine_list)[0]
         if (len(second_shortest_distance)>len(shortest_distance)) and (len(second_shortest_distance)<(len(shortest_distance)*2)):
             current_min = sorted(haversine_list)[1]
-        c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(current_min[1]), ))
-        lat = c.fetchone()[0]
-        c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(current_min[1]), ))
-        lon = c.fetchone()[0]
+        lat = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
+        lon = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
         already_visited.append(current_min[1])
         distance_to_start = haversine(float(lat), float(lon), float(start_lat), float(start_lon))
         if (travel_list_sum + current_min[0] + distance_to_start) < 2000:
@@ -75,88 +79,72 @@ def main():
         else:
             break
         haversine_list = []
-    max_travel_distance_check(travel_list, c, travel_list_sum, distance_to_start, start_lat, start_lon)
-    display_result(travel_list, start_lat, start_lon, c, travel_list_sum, distance_to_start, time)
-
-def get_data(arg):
-    """Get data from sql"""
-    pass
-
-def max_travel_distance_check(travel_list, c, travel_list_sum, distance_to_start, start_lat, start_lon):
-    """Make sure final travel list does not exceed 2000km"""
 
     if travel_list!=[]:
-        while (travel_list_sum+distance_to_start)>2000:
-            del travel_list[-1]
-            c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
-            lat2 = c.fetchone()[0]
-            c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(travel_list[-1][1]), ))
-            lon2 = c.fetchone()[0]
-            distance_to_start = haversine(float(lat2), float(lon2), float(start_lat), float(start_lon))
-    else:
-        pass
-
-
-def display_result(travel_list, start_lat, start_lon, c, distance_to_start, travel_list_sum, time):
-    """Display the result"""
-
-    if travel_list!=[]:
-        print('\nFound {} beer factories:'.format(len(travel_list)))
-        print('-> HOME: ', start_lat, start_lon)
-        str_tmp = '-> [{0}] {1}: {2} {3} Distance: {4} km.'
-        for hav, id in travel_list:
-            c.execute("SELECT name FROM breweries WHERE id=?", (id, ))
-            breweries_qr = c.fetchone()
-            c.execute("SELECT latitude, longitude FROM geocodes WHERE brewery_id=?", (id, ))
-            geocodes_qr = c.fetchone()
-            breweries_qr_str = str(breweries_qr[0])
-            if len(breweries_qr_str)>23:
-                breweries_qr_str = breweries_qr_str[:23] + '...'
-            print(str_tmp.format(id, breweries_qr_str, geocodes_qr[0], geocodes_qr[1], hav))
-        print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
-        print('\nTotal distance: ', (travel_list_sum+distance_to_start), 'km.\n')
-        beer_count = 0
-        for hav, id in travel_list:
-            c.execute("SELECT name FROM beers WHERE brewery_id=?", (id, ))
-            beers_qr = c.fetchall()
-            for beer in beers_qr:
-                if len(beer)>1:
-                    for i in beer:
-                        beer_count+=1
-                else:
-                    beer_count+=1
-        print('Collected {} beer types:'.format(beer_count))
-        for hav, id in travel_list:
-            c.execute("SELECT name FROM beers WHERE brewery_id=?", (id, ))
-            beers_qr = c.fetchall()
-            try:
-                if len(beers_qr)>1:
-                    for beer in beers_qr:
-                        print('     ->', beer[0])
-                else:
-                    print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
-            except Exception as e:
-                pass
-        print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
+        travel_list = max_travel_distance_check(travel_list, travel_list_sum, distance_to_start, start_lat, start_lon)
+        display_result(travel_list, start_lat, start_lon, travel_list_sum, distance_to_start)
         print('\nWould you like to see the travel route in Google Maps?(y/n)')
         question = input()
         if question.lower()=='y':
-            export_results(travel_list, c)
+            export_results(travel_list)
             exit()
         else:
             exit()
     else:
         print('Sorry, no breweries within 2000km from this starting location.')
+        print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
+
+def max_travel_distance_check(travel_list, travel_list_sum, distance_to_start, start_lat, start_lon):
+    """Make sure final travel list does not exceed 2000km"""
+    while (travel_list_sum+distance_to_start)>2000:
+        del travel_list[-1]
+        lat2 = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(travel_list[-1][1]))[0]
+        lon2 = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(travel_list[-1][1]))[0]
+        distance_to_start = haversine(float(lat2), float(lon2), float(start_lat), float(start_lon))
+    return travel_list
+
+def display_result(travel_list, start_lat, start_lon, distance_to_start, travel_list_sum):
+    """Display the result"""
+    print('\nFound {} beer factories:'.format(len(travel_list)))
+    print('-> HOME: ', start_lat, start_lon)
+    str_tmp = '-> [{0}] {1}: {2} {3} Distance: {4} km.'
+    for hav, id in travel_list:
+        breweries_qr = get_data(1, 'name', 'breweries', 'id', str(id))
+        geocodes_qr = get_data(1, 'latitude, longitude', 'geocodes', 'brewery_id', str(id))
+        breweries_qr_str = str(breweries_qr[0])
+        if len(breweries_qr_str)>23:
+            breweries_qr_str = breweries_qr_str[:23] + '...'
+        print(str_tmp.format(id, breweries_qr_str, geocodes_qr[0], geocodes_qr[1], hav))
+    print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
+    print('\nTotal distance: ', (travel_list_sum+distance_to_start), 'km.\n')
+    beer_count = 0
+    for hav, id in travel_list:
+        beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
+        for beer in beers_qr:
+            if len(beer)>1:
+                for i in beer:
+                    beer_count+=1
+            else:
+                beer_count+=1
+    print('Collected {} beer types:'.format(beer_count))
+    for hav, id in travel_list:
+        beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
+        try:
+            if len(beers_qr)>1:
+                for beer in beers_qr:
+                    print('     ->', beer[0])
+            else:
+                print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
+        except Exception as e:
+            pass
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
 
-def export_results(travel_list, c):
+def export_results(travel_list):
         web_str = 'http://www.google.com/maps/dir/'
         geocodes_list = []
         for hav, id in travel_list:
-            c.execute("SELECT latitude FROM geocodes WHERE brewery_id=?", (str(id), ))
-            geo1 = c.fetchone()[0]
-            c.execute("SELECT longitude FROM geocodes WHERE brewery_id=?", (str(id), ))
-            geo2 = c.fetchone()[0]
+            geo1 = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(id))[0]
+            geo2 = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(id))[0]
             geocodes_list.append((geo1, geo2))
         geocodes_list.append(geocodes_list[0])
         for geo in geocodes_list:
