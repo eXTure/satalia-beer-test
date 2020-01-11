@@ -75,16 +75,15 @@ def main():
         else:
             break
         haversine_list = []
-        max_travel_distance_check(travel_list, travel_list_sum, distance_to_start)
-        display_result(travel_list, start_lat, start_lon, c, travel_list_sum, distance_to_start, time)
+    max_travel_distance_check(travel_list, c, travel_list_sum, distance_to_start, start_lat, start_lon)
+    display_result(travel_list, start_lat, start_lon, c, travel_list_sum, distance_to_start, time)
 
 def get_data(arg):
     """Get data from sql"""
     pass
 
-def max_travel_distance_check(travel_list, travel_list_sum, distance_to_start):
+def max_travel_distance_check(travel_list, c, travel_list_sum, distance_to_start, start_lat, start_lon):
     """Make sure final travel list does not exceed 2000km"""
-
 
     if travel_list!=[]:
         while (travel_list_sum+distance_to_start)>2000:
@@ -138,13 +137,19 @@ def display_result(travel_list, start_lat, start_lon, c, distance_to_start, trav
                     print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
             except Exception as e:
                 pass
+        print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
+        print('\nWould you like to see the travel route in Google Maps?(y/n)')
+        question = input()
+        if question.lower()=='y':
+            export_results(travel_list, c)
+            exit()
+        else:
+            exit()
     else:
         print('Sorry, no breweries within 2000km from this starting location.')
-
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
-    print('\nWould you like to see the travel route in Google Maps?(y/n)')
-    question = input()
-    if question.lower()=='y':
+
+def export_results(travel_list, c):
         web_str = 'http://www.google.com/maps/dir/'
         geocodes_list = []
         for hav, id in travel_list:
@@ -157,8 +162,6 @@ def display_result(travel_list, start_lat, start_lon, c, distance_to_start, trav
         for geo in geocodes_list:
             web_str+=str(geo[0])+','+str(geo[1])+'/'
         webbrowser.open(web_str)
-    else:
-        exit()
 
 if __name__ == '__main__':
     main()
