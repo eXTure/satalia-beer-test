@@ -36,15 +36,11 @@ def get_data(fetch, select_d, from_d, where_d, id_d):
     else:
         return c.fetchone()
 
-def main():
+def main(lati, longi):
 
-    parser = argparse.ArgumentParser(description='Enter coordinates')
-    parser.add_argument('lat', type=str, help='Latitude')
-    parser.add_argument('lon', type=str, help='Longitude')
-    args = parser.parse_args()
     start_time = time.perf_counter()
-    start_lat = args.lat
-    start_lon = args.lon
+    start_lat = lati
+    start_lon = longi
 
     lat = start_lat
     lon = start_lon
@@ -152,4 +148,8 @@ def export_results(travel_list):
         webbrowser.open(web_str)
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Enter coordinates')
+    parser.add_argument('lat', type=str, help='Latitude')
+    parser.add_argument('lon', type=str, help='Longitude')
+    args = parser.parse_args()
+    main(args.lat, args.lon)
