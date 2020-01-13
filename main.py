@@ -56,16 +56,22 @@ def main(lati, longi):
                 haversine_list.append([haversine(float(lat), float(lon), float(lat1), float(lon1)), id])
             else:
                 continue
-
-        shortest_distance = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[0][1]))
-        second_shortest_distance = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[1][1]))
         current_min = sorted(haversine_list)[0]
-        if (len(second_shortest_distance)>len(shortest_distance)) and (len(second_shortest_distance)<(len(shortest_distance)*2)):
+
+        #Optimization
+        shortest_distance_beer_list = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[0][1]))
+        second_distance_beer_list = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[1][1]))
+        if (len(second_distance_beer_list)>len(shortest_distance_beer_list)) and \
+                (len(second_distance_beer_list)<len(shortest_distance_beer_list)*2) and \
+                (int(sorted(haversine_list)[1][0])<int(sorted(haversine_list)[0][0])*2):
             current_min = sorted(haversine_list)[1]
+
         lat = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
         lon = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
         already_visited.append(current_min[1])
         distance_to_start = haversine(float(lat), float(lon), float(start_lat), float(start_lon))
+
+        #Add current location to the travel list
         if (travel_list_sum + current_min[0] + distance_to_start) < 2000:
             travel_list.append(current_min)
             sum = 0
@@ -113,16 +119,7 @@ def display_result(travel_list, start_lat, start_lon, distance_to_start, travel_
         print(str_tmp.format(id, breweries_qr_str, geocodes_qr[0], geocodes_qr[1], hav))
     print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
     print('\nTotal distance: ', (travel_list_sum+distance_to_start), 'km.\n')
-    beer_count = 0
-    for hav, id in travel_list:
-        beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
-        for beer in beers_qr:
-            if len(beer)>1:
-                for i in beer:
-                    beer_count+=1
-            else:
-                beer_count+=1
-    print('Collected {} beer types:'.format(beer_count))
+    print('Collected {} beer types:'.format(count_beer(travel_list)))
     for hav, id in travel_list:
         beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
         try:
@@ -134,6 +131,18 @@ def display_result(travel_list, start_lat, start_lon, distance_to_start, travel_
         except Exception as e:
             pass
     print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
+
+def count_beer(travel_list):
+    beer_count = 0
+    for hav, id in travel_list:
+        beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
+        for beer in beers_qr:
+            if len(beer)>1:
+                for i in beer:
+                    beer_count+=1
+            else:
+                beer_count+=1
+    return beer_count
 
 def export_results(travel_list):
         web_str = 'http://www.google.com/maps/dir/'
