@@ -56,16 +56,7 @@ def main(lati, longi):
                 haversine_list.append([haversine(float(lat), float(lon), float(lat1), float(lon1)), id])
             else:
                 continue
-        current_min = sorted(haversine_list)[0]
-
-        #Optimization
-        shortest_distance_beer_list = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[0][1]))
-        second_distance_beer_list = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[1][1]))
-        if (len(second_distance_beer_list)>len(shortest_distance_beer_list)) and \
-                (len(second_distance_beer_list)<len(shortest_distance_beer_list)*2) and \
-                (int(sorted(haversine_list)[1][0])<int(sorted(haversine_list)[0][0])*2):
-            current_min = sorted(haversine_list)[1]
-
+        current_min = optimize(haversine_list)
         lat = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
         lon = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
         already_visited.append(current_min[1])
@@ -95,6 +86,18 @@ def main(lati, longi):
     else:
         print('Sorry, no breweries within 2000km from this starting location.')
         print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
+
+def optimize(haversine_list):
+    """Optimization"""
+    shortest_distance_beer_list = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[0][1]))
+    second_distance_beer_list = get_data(0, 'name', 'beers', 'brewery_id', str(sorted(haversine_list)[1][1]))
+    if (len(second_distance_beer_list)>len(shortest_distance_beer_list)) and \
+            (len(second_distance_beer_list)<len(shortest_distance_beer_list)*2) and \
+            (int(sorted(haversine_list)[1][0])<int(sorted(haversine_list)[0][0])*2):
+        return sorted(haversine_list)[1]
+    else:
+        return sorted(haversine_list)[0]
+
 
 def max_travel_distance_check(travel_list, travel_list_sum, distance_to_start, start_lat, start_lon):
     """Make sure final travel list does not exceed 2000km"""
