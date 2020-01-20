@@ -35,8 +35,6 @@ def main(lati, longi):
     travel_list_sum = 0
     distance_to_start = 0
     already_visited = []
-    #print(beers_df.iat[307, 1])#[307])
-    #print(beers_df['name'][307])
     while True:
         for id, lat1, lon1 in c.execute("SELECT brewery_id, latitude, longitude FROM geocodes"):
             if id not in already_visited:
@@ -44,10 +42,11 @@ def main(lati, longi):
             else:
                 continue
         current_min = optimize(haversine_list)
-        #lat = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
-        lat = geocodes_df['latitude'][current_min[1]]
-        #lon = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(current_min[1]))[0]
-        lon = geocodes_df['longitude'][current_min[1]]
+        lat = geocodes_df.loc[[current_min[1], 'latitude']]
+        #lat = geocodes_df[['latitude', current_min[1]]]
+        lon = geocodes_df.loc[[current_min[1], 'longitude']]
+        #lon = geocodes_df[['longitude', current_min[1]]]
+        print(lat, lon)
         already_visited.append(current_min[1])
         distance_to_start = haversine(float(lat), float(lon), float(start_lat), float(start_lon))
 
@@ -107,9 +106,7 @@ def max_travel_distance_check(travel_list, travel_list_sum, distance_to_start, s
     """Make sure final travel list does not exceed 2000km"""
     while (travel_list_sum+distance_to_start)>2000:
         del travel_list[-1]
-        #lat2 = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(travel_list[-1][1]))[0]
         lat2 = geocodes_df['latitude'][travel_list[-1][1]]
-        #lon2 = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(travel_list[-1][1]))[0]
         lon2 = geocodes_df['longitude'][travel_list[-1][1]]
         distance_to_start = haversine(float(lat2), float(lon2), float(start_lat), float(start_lon))
     return travel_list
@@ -120,13 +117,8 @@ def display_travel_route(travel_list, start_lat, start_lon, distance_to_start, t
     print('-> HOME: ', start_lat, start_lon)
     str_tmp = '-> [{0}] {1}: {2} {3} Distance: {4} km.'
     for hav, id in travel_list:
-        #breweries_qr = get_data(1, 'name', 'breweries', 'id', str(id))
         breweries_qr = breweries_df.loc[id, 'name']
-        #print(breweries_qr)
-        #geocodes_qr = get_data(1, 'latitude, longitude', 'geocodes', 'brewery_id', str(id))
         geocodes_qr = geocodes_df.loc[id, 'latitude':'longitude']
-        #print(geocodes_df.loc[id, 'latitude':'longitude'])#[id])
-        #geocodes_qr = geocodes_df['latitude', 'longitude'][id]
         breweries_qr_str = str(breweries_qr[0])
         if len(breweries_qr)>22:
             breweries_qr = breweries_qr[:22] + '...'
@@ -138,15 +130,19 @@ def display_beer_list(travel_list):
     """Display a list of beers collected on the route"""
     print('Collected {} beer types:'.format(count_beer(travel_list)))
     for hav, id in travel_list:
-        beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
-        try:
-            if len(beers_qr)>1:
-                for beer in beers_qr:
-                    print('     ->', beer[0])
-            else:
-                print('     ->', str(beers_qr[0]).strip('()').strip("''").strip(',').strip("'"))
-        except Exception as e:
-            pass
+        #beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
+        #try:
+        #print(beers_df[id, 'name'])
+        beers_qr = beers_df.loc[[id]['name']]#.to_string()#.to_list()
+        #print(beers_qr)
+        #if len(beers_qr.index)>1:
+        #    for name in beers_qr:
+        #        print('     ->', name)
+        #else:
+        print(beers_qr)
+        #print('     ->', str(beers_qr).strip('()').strip("''").strip(',').strip("'"))
+        #except Exception as e:
+        #    pass
 
 def count_beer(travel_list):
     beer_count = 0
