@@ -21,15 +21,13 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def apply_haversine(x, lat, lon):
     """
-    Calculate distance based on 2 coordinates and exclude visited places
+    Calculate distance between two points and exclude visited places
     """
     if x.Visited==False:
         distance = haversine(lat, lon, x.latitude, x.longitude)
     else:
         distance = None
     return distance
-
-start_time = time.perf_counter()
 
 def main(lati, longi):
 
@@ -81,20 +79,18 @@ def main(lati, longi):
                 total_distance = current_distance + distance_to_start
                 not_completed = False
 
-    print(travel_df, total_distance)
-
     if empty_list==False:
         #Displaying results
         display_travel_route(travel_df, start_lat, start_lon, distance_to_start, total_distance)
         display_beer_list(travel_df)
         print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
-        #print('\nWould you like to see the travel route in Google Maps?(y/n)')
-        # question = input()
-        # if question.lower()=='y':
-        #     export_results(travel_list)
-        #     exit()
-        # else:
-        #     exit()
+        print('\nWould you like to see the travel route in Google Maps?(y/n)')
+        question = input()
+        if question.lower()=='y':
+            export_results(travel_df)
+            exit()
+        else:
+            exit()
 
 def optimize(haversine_df, min_df, beer_count1, beer_count2, distance1, distance2):
     """
@@ -128,51 +124,41 @@ def display_beer_list(travel_df):
     """
     Display a list of beer types collected on the travel route
     """
-    # print('Collected {} beer types:'.format(count_beer(travel_list)))
-    # for hav, id in travel_list:
-    #     #beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
-    #     #try:
-    #     #print(beers_df[id, 'name'])
-    #     beers_qr = beers_df.loc[[id]['name']]#.to_string()#.to_list()
-    #     #print(beers_qr)
-    #     #if len(beers_qr.index)>1:
-    #     #    for name in beers_qr:
-    #     #        print('     ->', name)
-    #     #else:
-    #     print(beers_qr)
-    #     #print('     ->', str(beers_qr).strip('()').strip("''").strip(',').strip("'"))
-    #     #except Exception as e:
-    #     #    pass
+    print(f'Collected {count_beer(travel_df)} beer types:')
+    for row in travel_df.index:
+        br_id = int(travel_df.loc[row]['brewery_id'])
+        if type(beers_df.loc[br_id]['name'])==str:
+            name = beers_df.loc[br_id]['name']
+            print(f'     -> {name}')
+        else:
+            for name in beers_df.loc[br_id]['name'].values:
+                print(f'     -> {name}')
 
 def count_beer(travel_df):
     """
-    Count the number of beers
+    Count how many types of beer each brewery has
     """
-#     beer_count = 0
-#     for hav, id in travel_list:
-#         beers_qr = get_data(0, 'name', 'beers', 'brewery_id', str(id))
-#         for beer in beers_qr:
-#             if len(beer)>1:
-#                 for i in beer:
-#                     beer_count+=1
-#             else:
-#                 beer_count+=1
-#     return beer_count
+    number_of_beers = 0
+    for row in travel_df.index:
+        br_id = int(travel_df.loc[row]['brewery_id'])
+        if type(beers_df.loc[br_id]['name'])==str:
+            number_of_beers+=1
+        else:
+            beers = len(beers_df.loc[br_id]['name'])
+            number_of_beers+=beers
+    return number_of_beers
 
-def export_results(travel_list):
+def export_results(travel_df):
     """
     Export results to google maps
     """
-#         web_str = 'http://www.google.com/maps/dir/'
-#         geocodes_list = []
-#         for hav, id in travel_list:
-#             geo1 = get_data(1, 'latitude', 'geocodes', 'brewery_id', str(id))[0]
-#             geo2 = get_data(1, 'longitude', 'geocodes', 'brewery_id', str(id))[0]
-#             geocodes_list.append((geo1, geo2))
-#         geocodes_list.append(geocodes_list[0])
-#         for geo in geocodes_list:
-#             web_str+=str(geo[0])+','+str(geo[1])+'/'
-#         webbrowser.open(web_str)
+    web_str = 'http://www.google.com/maps/dir/'
+    for row in travel_df.index:
+        br_id = int(travel_df.loc[row]['brewery_id'])
+        geocodes_coord = geocodes_df.loc[br_id, 'latitude':'longitude']
+        web_str+=f'{geocodes_coord[0]},{geocodes_coord[1]}/'
+        print(web_str)
+    webbrowser.open(web_str)
 
 if __name__ == '__main__':
     #Get coordinates from argparse
