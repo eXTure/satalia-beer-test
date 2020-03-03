@@ -21,7 +21,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def apply_haversine(x, lat, lon):
     """
-    Calculate distance between two points and exclude visited places
+    Apply haversine to every row in dataframe and exclude visited places
     """
     if x.Visited==False:
         distance = haversine(lat, lon, x.latitude, x.longitude)
@@ -38,6 +38,7 @@ def main(lati, longi):
     lon = start_lon
     haversine_df = pd.DataFrame()
     travel_df = pd.DataFrame(columns=['brewery_id', 'distance'])
+    #beer_count_df = pd.Index(beers_df.index).value_counts().to_frame()
     current_distance = 0
     total_distance = 0
     empty_list = False
@@ -55,11 +56,16 @@ def main(lati, longi):
         else:
             #Check 2 nearest locations distances and how many beer types they contain
             compare_min_df = haversine_df.nsmallest(2)
-            first_loc_beer_count = int(beer_count_df.loc[compare_min_df[:1]].values)
-            second_loc_beer_count = int(beer_count_df.loc[compare_min_df[1:]].values)
+            first_loc_distance = int(compare_min_df.iloc[0])
+            second_loc_distance = int(compare_min_df.iloc[1])
+            first_loc_beer_count = int(beer_count_df.loc[compare_min_df[:1].index[0]].values)
+            second_loc_beer_count = int(beer_count_df.loc[compare_min_df[1:].index[0]].values)
 
             #Optimize for better results
-            min_id = optimize(haversine_df, compare_min_df, first_loc_beer_count, second_loc_beer_count, int(compare_min_df[:1]), int(compare_min_df[1:]))
+            if optimize(first_loc_beer_count, second_loc_beer_count, first_loc_distance, second_loc_distance)==1:
+                min_id = haversine_df.idxmin(skipna=True)
+            else:
+                min_id = int(compare_min_df[1:].index[0])
 
             #Update distance variables
             lat, lon = geocodes_df.loc[min_id, ['latitude', 'longitude']]
@@ -92,16 +98,21 @@ def main(lati, longi):
         else:
             exit()
 
-def optimize(haversine_df, min_df, beer_count1, beer_count2, distance1, distance2):
+def optimize(beer_count1, beer_count2, distance1, distance2):
     """
-    Choose second location if it has more types of beer AND
-    the place is not 2x further than the closest brewery
+    Check if second location has more types of beer AND is not 2x further than the closest brewery
+    Return '1' if shortest distance is a better choice
+    Return '2' if second shortest distance is a better choice
     """
     if(beer_count2>beer_count1) and (distance2<distance1*2):
-        return int(min_df[1:].index[0])
+        return 2
     else:
-        return haversine_df.idxmin(skipna=True)
+        return 1
 
+"""
+TODO:
+Separate displaying from display praparation
+"""
 def display_travel_route(travel_df, start_lat, start_lon, distance_to_start, total_distance):
     """
     Display every travel route id, name, latitude, longitude and distance
@@ -120,6 +131,10 @@ def display_travel_route(travel_df, start_lat, start_lon, distance_to_start, tot
     print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
     print('\nTotal distance: ', (int(total_distance)), 'km.\n')
 
+"""
+TODO:
+Separate displaying from display praparation
+"""
 def display_beer_list(travel_df):
     """
     Display a list of beer types collected on the travel route
@@ -141,13 +156,14 @@ def count_beer(travel_df):
     number_of_beers = 0
     for row in travel_df.index:
         br_id = int(travel_df.loc[row]['brewery_id'])
-        if type(beers_df.loc[br_id]['name'])==str:
-            number_of_beers+=1
-        else:
-            beers = len(beers_df.loc[br_id]['name'])
-            number_of_beers+=beers
+        beers = int(beer_count_df.loc[br_id])
+        number_of_beers+=beers
     return number_of_beers
 
+"""
+TODO:
+Make export_results only accept the string. The string has to be prepared beforehand.
+"""
 def export_results(travel_df):
     """
     Export results to google maps
