@@ -3,7 +3,7 @@ import pandas as pd
 from math import radians, cos, sin, asin, sqrt
 from itertools import islice
 
-def haversine(lat1, lon1, lat2, lon2):
+def calculate_haversine(lat1, lon1, lat2, lon2):
     """
     Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)
@@ -24,21 +24,18 @@ def apply_haversine(x, lat, lon):
     Apply haversine to every row in dataframe and exclude visited places
     """
     if x.Visited==False:
-        distance = haversine(lat, lon, x.latitude, x.longitude)
+        distance = calculate_haversine(lat, lon, x.latitude, x.longitude)
     else:
         distance = None
     return distance
 
-def main(lati, longi):
+def main():
 
     start_time = time.perf_counter()
-    start_lat = lati
-    start_lon = longi
     lat = start_lat
     lon = start_lon
     haversine_df = pd.DataFrame()
     travel_df = pd.DataFrame(columns=['brewery_id', 'distance'])
-    #beer_count_df = pd.Index(beers_df.index).value_counts().to_frame()
     current_distance = 0
     total_distance = 0
     empty_list = False
@@ -50,7 +47,7 @@ def main(lati, longi):
         haversine_df = geocodes_df.apply(apply_haversine, args=(lat, lon), axis=1)
         if haversine_df.min()>2000:
             print('Sorry, no breweries within 2000km from this starting location.')
-            print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
+            print(f'\nProgram took: {time.perf_counter() - start_time} seconds')
             empty_list = True
             not_completed = False
         else:
@@ -61,7 +58,7 @@ def main(lati, longi):
             first_loc_beer_count = int(beer_count_df.loc[compare_min_df[:1].index[0]].values)
             second_loc_beer_count = int(beer_count_df.loc[compare_min_df[1:].index[0]].values)
 
-            #Optimize for better results
+            #Optimize for better results/Collect more types of beer
             if optimize(first_loc_beer_count, second_loc_beer_count, first_loc_distance, second_loc_distance)==1:
                 min_id = haversine_df.idxmin(skipna=True)
             else:
@@ -69,7 +66,7 @@ def main(lati, longi):
 
             #Update distance variables
             lat, lon = geocodes_df.loc[min_id, ['latitude', 'longitude']]
-            distance_to_start = haversine(start_lat, start_lon, lat, lon)
+            distance_to_start = calculate_haversine(start_lat, start_lon, lat, lon)
             current_distance+=haversine_df[min_id]
             total_distance = current_distance + distance_to_start
 
@@ -80,14 +77,14 @@ def main(lati, longi):
                 geocodes_df.loc[min_id, 'Visited']=True
             else:
                 lat, lon = geocodes_df.loc[int(travel_df['brewery_id'].tail(1).values), ['latitude', 'longitude']]
-                distance_to_start = haversine(start_lat, start_lon, lat, lon)
+                distance_to_start = calculate_haversine(start_lat, start_lon, lat, lon)
                 current_distance-=haversine_df[min_id]
                 total_distance = current_distance + distance_to_start
                 not_completed = False
 
     if empty_list==False:
         #Displaying results
-        display_travel_route(travel_df, start_lat, start_lon, distance_to_start, total_distance)
+        display_travel_route(travel_df, distance_to_start, total_distance)
         display_beer_list(travel_df)
         print("\nProgram took: %s seconds" % (time.perf_counter() - start_time))
         print('\nWould you like to see the travel route in Google Maps?(y/n)')
@@ -109,27 +106,33 @@ def optimize(beer_count1, beer_count2, distance1, distance2):
     else:
         return 1
 
-"""
-TODO:
-Separate displaying from display praparation
-"""
-def display_travel_route(travel_df, start_lat, start_lon, distance_to_start, total_distance):
+def display_travel_route(travel_df, distance_to_start, total_distance):
     """
-    Display every travel route id, name, latitude, longitude and distance
+    Prepare variables for travel route display
     """
-    print('\nFound {} beer factories:'.format(travel_df['brewery_id'].count()))
+    number_of_breweries = travel_df['brewery_id'].count()
+    print(f'\nFound {number_of_breweries} beer factories:')
     print('-> HOME: ', start_lat, start_lon)
     for row in travel_df.index:
         br_id = int(travel_df.loc[row]['brewery_id'])
-        brewery_name = breweries_df.loc[br_id]['name']
         geocodes_coord = geocodes_df.loc[br_id, 'latitude':'longitude']
-        distance = int(travel_df.loc[row]['distance'])
-        #To keep tight formating, check if brewery name isn't too long
-        if len(brewery_name)>22:
-            brewery_name = brewery_name[:22] + '...'
-        print(f'-> [{br_id}] {brewery_name}: {geocodes_coord[0]} {geocodes_coord[1]} Distance: {distance} km.')
+        display_brewery(int(travel_df.loc[row]['brewery_id']),
+                                breweries_df.loc[br_id]['name'],
+                                geocodes_coord[0],
+                                geocodes_coord[1],
+                                int(travel_df.loc[row]['distance']))
     print('<- HOME: ', start_lat, start_lon, 'Distance:', distance_to_start, 'km.')
     print('\nTotal distance: ', (int(total_distance)), 'km.\n')
+
+def display_brewery(brewery_id, name, lat, lon, distance):
+    """
+    To keep tight formating, check if brewery name isn't too long
+    Display travel route id, name, latitude, longitude and distance
+    """
+    if len(name)>22:
+            name = name[:22] + '...'
+    print(f'-> [{brewery_id}] {name}: {lat} {lon} Distance: {distance} km.')
+
 
 """
 TODO:
@@ -173,7 +176,6 @@ def export_results(travel_df):
         br_id = int(travel_df.loc[row]['brewery_id'])
         geocodes_coord = geocodes_df.loc[br_id, 'latitude':'longitude']
         web_str+=f'{geocodes_coord[0]},{geocodes_coord[1]}/'
-        print(web_str)
     webbrowser.open(web_str)
 
 if __name__ == '__main__':
@@ -182,6 +184,8 @@ if __name__ == '__main__':
     parser.add_argument('lat', type=float, help='Latitude')
     parser.add_argument('lon', type=float, help='Longitude')
     args = parser.parse_args()
+    start_lat = args.lat
+    start_lon = args.lon
 
     #Initiate db
     beers_df = pd.read_csv('Data/beers.csv', index_col=1)
@@ -190,4 +194,4 @@ if __name__ == '__main__':
     geocodes_df['Visited']=False
     beer_count_df = pd.Index(beers_df.index).value_counts().to_frame()
 
-    main(args.lat, args.lon)
+    main()
