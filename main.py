@@ -92,8 +92,18 @@ def main():
 
     if not travel_df.empty:
         # Print out the results
-        print(display_travel_route(travel_df, distance_to_start, total_distance))
-        print(display_beer_list(travel_df))
+        print(
+            generate_travel_route(
+                travel_df,
+                geocodes_df,
+                breweries_df,
+                start_lat,
+                start_lon,
+                distance_to_start,
+                total_distance,
+            )
+        )
+        print(generate_beer_list(travel_df, beers_df))
         print(f"\nProgram took: {time.perf_counter() - start_time} seconds")
 
         # Google maps has a limitation and can only display limited amout of destinations
@@ -104,13 +114,25 @@ def main():
             print("\nWould you like to see the travel route in Google Maps?(y/n)")
             question = input()
             if question.lower() == "y":
-                webbrowser.open(construct_google_map_path(travel_df))
+                webbrowser.open(
+                    construct_google_map_path(
+                        travel_df, geocodes_df, start_lat, start_lon
+                    )
+                )
                 exit()
             else:
                 exit()
 
 
-def display_travel_route(travel_df, distance_to_start, total_distance):
+def generate_travel_route(
+    travel_df,
+    geocodes_df,
+    breweries_df,
+    start_lat,
+    start_lon,
+    distance_to_start,
+    total_distance,
+):
     """
     Format a detailed list of breweries visited on the travel route
     """
@@ -132,7 +154,7 @@ def display_travel_route(travel_df, distance_to_start, total_distance):
     return s
 
 
-def display_beer_list(travel_df):
+def generate_beer_list(travel_df, beers_df):
     """
     Format a detailed list of beer types collected on the travel route
     """
@@ -161,7 +183,7 @@ def count_beer(travel_df):
     return number_of_beers
 
 
-def construct_google_map_path(travel_df):
+def construct_google_map_path(travel_df, geocodes_df, start_lat, start_lon):
     """
     Make a web string for google maps
     """
@@ -184,11 +206,13 @@ if __name__ == "__main__":
     start_lat = args.lat
     start_lon = args.lon
 
-    # Initiate db
+    # Initiate data
     beers_df = pd.read_csv("Data/beers.csv", index_col=1)
     breweries_df = pd.read_csv("Data/breweries.csv", index_col=0)
-    geocodes_df = pd.read_csv("Data/geocodes.csv", index_col=1)
+    geocodes_df = pd.read_csv("Data/geocodes.csv", index_col=0)
     geocodes_df["Visited"] = False
+    geocodes_df = geocodes_df.drop_duplicates(subset="brewery_id", keep="first")
+    geocodes_df = geocodes_df.set_index("brewery_id")
     beer_count_df = pd.Index(beers_df.index).value_counts().to_frame()
     beer_count_df = beer_count_df.rename(columns={"brewery_id": "beer_count"})
 
