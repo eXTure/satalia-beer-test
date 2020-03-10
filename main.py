@@ -161,12 +161,8 @@ def generate_beer_list(travel_df, beers_df):
     s = ""
     s += f"Collected {count_beer(travel_df)} beer types:\n"
     for row in travel_df.itertuples():
-        if type(beers_df.loc[row.brewery_id]["name"]) == str:
-            name = beers_df.loc[row.brewery_id]["name"]
+        for name in beers_df.name.loc[[row.brewery_id]].values:
             s += f"     -> {name}\n"
-        else:
-            for name in beers_df.loc[row.brewery_id]["name"].values:
-                s += f"     -> {name}\n"
     return s
 
 
