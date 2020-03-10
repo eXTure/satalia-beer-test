@@ -50,12 +50,11 @@ def main():
         # Apply the distance calculation formula
         distances_df = geocodes_df.query("Visited == False").apply(
             apply_distance_calc, args=(lat, lon), axis=1
-        )
-        distances_df = distances_df.rename("distances")
+        ).rename("distances").to_frame()
 
         # Check if there's at least one location that is closer than MAX_DISTANCE
         # MAX_DISTANCE is divided by 2, since you'll need to come back to starting location
-        if distances_df.min() > (MAX_DISTANCE / 2):
+        if distances_df.min().values[0] > (MAX_DISTANCE / 2):
             print(
                 f"Sorry, no breweries within {MAX_DISTANCE}km from this starting location."
             )
