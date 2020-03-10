@@ -64,7 +64,7 @@ def main():
 
         # Count the ratio to identify best next brewery to visit
         distances_df = pd.merge(
-            distances_df, beer_count_df, left_index=True, right_index=True, how="inner"
+            distances_df, geocodes_df.beer_count, left_index=True, right_index=True, how="inner"
         )
         distances_df["ratio"] = distances_df.apply(
             lambda row: (row.beer_count + 1) / (row.distances + 0.01), axis=1
@@ -101,7 +101,6 @@ def main():
             generate_travel_route(
                 travel_df,
                 geocodes_df,
-                breweries_df,
                 start_lat,
                 start_lon,
                 distance_to_start,
@@ -132,7 +131,6 @@ def main():
 def generate_travel_route(
     travel_df,
     geocodes_df,
-    breweries_df,
     start_lat,
     start_lon,
     distance_to_start,
@@ -147,7 +145,7 @@ def generate_travel_route(
     s += f"-> HOME: {start_lat} {start_lon}\n"
     for row in travel_df.itertuples():
         lat, lon = geocodes_df.loc[row.brewery_id, "latitude":"longitude"]
-        name = breweries_df.loc[row.brewery_id]["name"]
+        name = geocodes_df.name.loc[row.brewery_id]
         if len(name) > 22:
             name = name[:22] + "..."
         s += f"-> [{row.brewery_id}] {name}: {lat} {lon} Distance: {row.distance} km.\n"
@@ -178,9 +176,9 @@ def count_beer(travel_df):
     """
     number_of_beers = 0
     for row in travel_df.itertuples():
-        beers = beer_count_df.loc[row.brewery_id].values[0]
+        beers = geocodes_df.beer_count.loc[row.brewery_id]
         number_of_beers += beers
-    return number_of_beers
+    return int(number_of_beers)
 
 
 def construct_google_map_path(travel_df, geocodes_df, start_lat, start_lon):
@@ -209,10 +207,12 @@ if __name__ == "__main__":
     beers_df = pd.read_csv("Data/beers.csv", index_col=1)
     breweries_df = pd.read_csv("Data/breweries.csv", index_col=0)
     geocodes_df = pd.read_csv("Data/geocodes.csv", index_col=0)
+    geocodes_df = geocodes_df.join(breweries_df.name)
     geocodes_df["Visited"] = False
     geocodes_df = geocodes_df.drop_duplicates(subset="brewery_id", keep="first")
     geocodes_df = geocodes_df.set_index("brewery_id")
-    beer_count_df = pd.Index(beers_df.index).value_counts().to_frame()
-    beer_count_df = beer_count_df.rename(columns={"brewery_id": "beer_count"})
+    beer_count = beers_df.groupby(beers_df.index).size()
+    beer_count.name = "beer_count"
+    geocodes_df = geocodes_df.join(beer_count)
 
     main()
