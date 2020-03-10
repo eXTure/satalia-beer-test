@@ -107,7 +107,6 @@ def main():
         print(
             generate_travel_route(
                 travel_df,
-                geocodes_df,
                 start_lat,
                 start_lon,
                 distance_to_start,
@@ -118,8 +117,7 @@ def main():
         print(f"\nProgram took: {time.perf_counter() - start_time} seconds")
 
         # Google maps has a limitation and can only display limited amout of destinations
-        number_of_breweries = travel_df["brewery_id"].count()
-        if number_of_breweries > 15:
+        if travel_df.brewery_id.count() > 15:
             exit()
         else:
             print("\nWould you like to see the travel route in Google Maps?(y/n)")
@@ -127,7 +125,7 @@ def main():
             if question.lower() == "y":
                 webbrowser.open(
                     construct_google_map_path(
-                        travel_df, geocodes_df, start_lat, start_lon
+                        travel_df, start_lat, start_lon
                     )
                 )
                 exit()
@@ -136,7 +134,7 @@ def main():
 
 
 def generate_travel_route(
-    travel_df, geocodes_df, start_lat, start_lon, distance_to_start, total_distance,
+    travel_df, start_lat, start_lon, distance_to_start, total_distance
 ):
     """
     Format a detailed list of breweries visited on the travel route
@@ -159,22 +157,21 @@ def generate_beer_list(travel_df, beers_df):
     Format a detailed list of beer types collected on the travel route
     """
     s = ""
-    s += f"Collected {int(travel_df.beer_count.sum())} beer types:\n"
+    s += f"Collected {travel_df.beer_count.sum()} beer types:\n"
     for row in travel_df.itertuples():
         for name in beers_df.loc[[row.brewery_id], "name"].values:
             s += f"     -> {name}\n"
     return s
 
 
-def construct_google_map_path(travel_df, geocodes_df, start_lat, start_lon):
+def construct_google_map_path(travel_df, start_lat, start_lon):
     """
     Make a web string for google maps
     """
     web_str = "http://www.google.com/maps/dir/"
     web_str += f"{start_lat},{start_lon}/"
     for row in travel_df.itertuples():
-        lat, lon = travel_df.loc[row.brewery_id, "latitude":"longitude"]
-        web_str += f"{lat},{lon}/"
+        web_str += f"{row.latitude},{row.longitude}/"
     web_str += f"{start_lat},{start_lon}/"
     return web_str
 
@@ -198,6 +195,6 @@ if __name__ == "__main__":
     geocodes_df = geocodes_df.set_index("brewery_id")
     beer_count = beers_df.groupby(beers_df.index).size()
     beer_count.name = "beer_count"
-    geocodes_df = geocodes_df.join(beer_count)
+    geocodes_df = geocodes_df.join(beer_count, how="inner")
 
     main()
