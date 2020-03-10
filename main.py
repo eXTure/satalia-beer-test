@@ -103,6 +103,7 @@ def main():
 
     if not travel_df.empty:
         # Print out the results
+        travel_df = travel_df.join(geocodes_df[["name", "latitude", "longitude", "beer_count"]], on="brewery_id", how="inner")
         print(
             generate_travel_route(
                 travel_df,
@@ -144,12 +145,10 @@ def generate_travel_route(
     number_of_breweries = travel_df["brewery_id"].count()
     s += f"Found {number_of_breweries} beer factories:\n"
     s += f"-> HOME: {start_lat} {start_lon}\n"
-    for row in travel_df.itertuples():
-        lat, lon = geocodes_df.loc[row.brewery_id, "latitude":"longitude"]
-        name = geocodes_df.loc[row.brewery_id, "name"]
+    for _, br_id, distance, name, lat, lon, _ in travel_df.itertuples():
         if len(name) > 22:
             name = name[:22] + "..."
-        s += f"-> [{row.brewery_id}] {name}: {lat} {lon} Distance: {row.distance} km.\n"
+        s += f"-> [{br_id}] {name}: {lat} {lon} Distance: {distance} km.\n"
     s += f"<- HOME: {start_lat}, {start_lon} Distance: {distance_to_start} km.\n\n"
     s += f"Total distance: {total_distance} km.\n"
     return s
@@ -160,22 +159,11 @@ def generate_beer_list(travel_df, beers_df):
     Format a detailed list of beer types collected on the travel route
     """
     s = ""
-    s += f"Collected {count_beer(travel_df)} beer types:\n"
+    s += f"Collected {int(travel_df.beer_count.sum())} beer types:\n"
     for row in travel_df.itertuples():
         for name in beers_df.loc[[row.brewery_id], "name"].values:
             s += f"     -> {name}\n"
     return s
-
-
-def count_beer(travel_df):
-    """
-    Count how many types of beer each brewery has
-    """
-    number_of_beers = 0
-    for row in travel_df.itertuples():
-        beers = geocodes_df.loc[row.brewery_id, "beer_count"]
-        number_of_beers += beers
-    return int(number_of_beers)
 
 
 def construct_google_map_path(travel_df, geocodes_df, start_lat, start_lon):
@@ -185,7 +173,7 @@ def construct_google_map_path(travel_df, geocodes_df, start_lat, start_lon):
     web_str = "http://www.google.com/maps/dir/"
     web_str += f"{start_lat},{start_lon}/"
     for row in travel_df.itertuples():
-        lat, lon = geocodes_df.loc[row.brewery_id, "latitude":"longitude"]
+        lat, lon = travel_df.loc[row.brewery_id, "latitude":"longitude"]
         web_str += f"{lat},{lon}/"
     web_str += f"{start_lat},{start_lon}/"
     return web_str
