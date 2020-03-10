@@ -48,9 +48,12 @@ def main():
     while True:
 
         # Apply the distance calculation formula
-        distances_df = geocodes_df.query("Visited == False").apply(
-            apply_distance_calc, args=(lat, lon), axis=1
-        ).rename("distances").to_frame()
+        distances_df = (
+            geocodes_df.query("Visited == False")
+            .apply(apply_distance_calc, args=(lat, lon), axis=1)
+            .rename("distances")
+            .to_frame()
+        )
 
         # Check if there's at least one location that is closer than MAX_DISTANCE
         # MAX_DISTANCE is divided by 2, since you'll need to come back to starting location
@@ -63,7 +66,11 @@ def main():
 
         # Count the ratio to identify best next brewery to visit
         distances_df = pd.merge(
-            distances_df, geocodes_df.beer_count, left_index=True, right_index=True, how="inner"
+            distances_df,
+            geocodes_df.beer_count,
+            left_index=True,
+            right_index=True,
+            how="inner",
         )
         distances_df["ratio"] = distances_df.apply(
             lambda row: (row.beer_count + 1) / (row.distances + 0.01), axis=1
@@ -128,12 +135,7 @@ def main():
 
 
 def generate_travel_route(
-    travel_df,
-    geocodes_df,
-    start_lat,
-    start_lon,
-    distance_to_start,
-    total_distance,
+    travel_df, geocodes_df, start_lat, start_lon, distance_to_start, total_distance,
 ):
     """
     Format a detailed list of breweries visited on the travel route
@@ -144,7 +146,7 @@ def generate_travel_route(
     s += f"-> HOME: {start_lat} {start_lon}\n"
     for row in travel_df.itertuples():
         lat, lon = geocodes_df.loc[row.brewery_id, "latitude":"longitude"]
-        name = geocodes_df.name.loc[row.brewery_id]
+        name = geocodes_df.loc[row.brewery_id, "name"]
         if len(name) > 22:
             name = name[:22] + "..."
         s += f"-> [{row.brewery_id}] {name}: {lat} {lon} Distance: {row.distance} km.\n"
@@ -160,7 +162,7 @@ def generate_beer_list(travel_df, beers_df):
     s = ""
     s += f"Collected {count_beer(travel_df)} beer types:\n"
     for row in travel_df.itertuples():
-        for name in beers_df.name.loc[[row.brewery_id]].values:
+        for name in beers_df.loc[[row.brewery_id], "name"].values:
             s += f"     -> {name}\n"
     return s
 
@@ -171,7 +173,7 @@ def count_beer(travel_df):
     """
     number_of_beers = 0
     for row in travel_df.itertuples():
-        beers = geocodes_df.beer_count.loc[row.brewery_id]
+        beers = geocodes_df.loc[row.brewery_id, "beer_count"]
         number_of_beers += beers
     return int(number_of_beers)
 
