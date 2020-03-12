@@ -12,6 +12,9 @@ from math import asin, cos, radians, sin, sqrt
 # Radius of earth in kilometers.
 EARTH_RADIUS = 6371
 
+# If TRUE, results will be exported to google maps
+GOOGLE_MAPS_EXPORT = False
+
 # Max distance you want to travel, in kilometers
 MAX_DISTANCE = 2000
 
@@ -37,100 +40,130 @@ def apply_distance_calc(x, lat, lon):
     return calculate_distance(lat, lon, x.latitude, x.longitude)
 
 
+def calculate_ratio(row):
+    return (row.beer_count + 1) / (row.distance + 0.01)
+
+
+def get_next_location(distances_df, km_left):
+    distances_df["distance_to_home"] = distances_df.apply(
+        apply_distance_calc, args=(start_lat, start_lon), axis=1
+    )
+    distances_df["ratio"] = distances_df.apply(calculate_ratio, axis=1)
+    print(pd.Series(distances_df.query("distance < 1000").ratio.idxmax()))
+    #--Cannot idxmax on empty object
+    best_next_location = pd.Series(distances_df.query("distance < 1000").ratio.idxmax())
+    if distances_df.distance_to_home.loc[best_next_location].values[0]>km_left:
+        return pd.Series()
+    else:
+        return distances_df.loc[best_next_location]
+
+
 def main():
     start_time = time.perf_counter()
     lat = start_lat
     lon = start_lon
     distances_df = pd.DataFrame()
-    travel_df = pd.DataFrame(columns=["brewery_id", "distance"])
-    current_distance = 0
-    total_distance = 0
+    travel_df = pd.DataFrame(
+        columns=[
+            "brewery_id",
+            "distance",
+            "name",
+            "latitude",
+            "longitude",
+            "beer_count",
+            "ratio",
+        ],
+        data=[["HOME", 0, "", start_lat, start_lon, 0, 0]],
+    )
+    # print(travel_df)
+    # current_distance = 0
+    # total_distance = 0
     while True:
 
         # Apply the distance calculation formula
         distances_df = (
             geocodes_df.query("Visited == False")
             .apply(apply_distance_calc, args=(lat, lon), axis=1)
-            .rename("distances")
+            .rename("distance")
             .to_frame()
         )
-
-        # Check if there's at least one location that is closer than MAX_DISTANCE
-        # MAX_DISTANCE is divided by 2, since you'll need to come back to starting location
-        if distances_df.min().values[0] > (MAX_DISTANCE / 2):
-            print(
-                f"Sorry, no breweries within {MAX_DISTANCE}km from this starting location."
-            )
-            print(f"\nProgram took: {time.perf_counter() - start_time} seconds")
-            break
-
-        # Count the ratio to identify best next brewery to visit
-        distances_df = pd.merge(
-            distances_df,
-            geocodes_df.beer_count,
-            left_index=True,
-            right_index=True,
+        # Join additional data to distances_df
+        distances_df = distances_df.join(
+            geocodes_df[["name", "latitude", "longitude", "beer_count"]],
+            on="brewery_id",
             how="inner",
         )
-        distances_df["ratio"] = distances_df.apply(
-            lambda row: (row.beer_count + 1) / (row.distances + 0.01), axis=1
-        )
-        best_brewery_id = distances_df.query("distances < 1000").ratio.idxmax()
+        km_left = MAX_DISTANCE - travel_df.distance.sum() #----distance sum incorrect
+        # print(km_left, travel_df.distance.sum())
+        next_valid_location = get_next_location(distances_df, km_left)
+        if next_valid_location.empty:
+            break
+        else:
+            travel_df.append(next_valid_location)
+            geocodes_df.loc[next_valid_location.index.values[0], "Visited"] = True
+            # break
+        # Check if there's at least one location that is closer than MAX_DISTANCE
+        # MAX_DISTANCE is divided by 2, since you'll need to come back to starting location
+
+        # if distances_df.min().values[0] > (MAX_DISTANCE / 2):
+        #     print(
+        #         f"Sorry, no breweries within {MAX_DISTANCE}km from this starting location."
+        #     )
+        #     print(f"\nProgram took: {time.perf_counter() - start_time} seconds")
+        #     break
 
         # Update distance variables
-        lat, lon = geocodes_df.loc[best_brewery_id, ["latitude", "longitude"]]
-        distance_to_start = calculate_distance(start_lat, start_lon, lat, lon)
-        current_distance += distances_df.distances.loc[best_brewery_id]
-        total_distance = current_distance + distance_to_start
+
+        # lat, lon = geocodes_df.loc[best_brewery_id, ["latitude", "longitude"]]
+        # distance_to_start = calculate_distance(start_lat, start_lon, lat, lon)
+        # current_distance += distances_df.distance.loc[best_brewery_id]
+        # total_distance = current_distance + distance_to_start
 
         # If total distance does not exceed the limit, add current location to the list
         # Otherwise, finish the loop and adress variables for the results
-        if total_distance < MAX_DISTANCE or travel_df.empty:
-            brewery = pd.Series(
-                [best_brewery_id, distances_df.distances[best_brewery_id]],
-                index=travel_df.columns,
-            )
-            travel_df = travel_df.append(brewery, ignore_index=True)
-            geocodes_df.loc[best_brewery_id, "Visited"] = True
-        else:
-            lat, lon = geocodes_df.loc[
-                travel_df.brewery_id.tail(1).values[0], ["latitude", "longitude"]
-            ]
-            distance_to_start = calculate_distance(start_lat, start_lon, lat, lon)
-            current_distance -= distances_df.distances.loc[best_brewery_id]
-            total_distance = current_distance + distance_to_start
-            break
 
+        # if total_distance < MAX_DISTANCE or travel_df.empty:
+        #     brewery = pd.Series(
+        #         [best_brewery_id, distances_df.distance[best_brewery_id]],
+        #         index=travel_df.columns,
+        #     )
+        #     travel_df = travel_df.append(brewery, ignore_index=True)
+        #     geocodes_df.loc[best_brewery_id, "Visited"] = True
+        # else:
+        #     lat, lon = geocodes_df.loc[
+        #         travel_df.brewery_id.tail(1).values[0], ["latitude", "longitude"]
+        #     ]
+        #     distance_to_start = calculate_distance(start_lat, start_lon, lat, lon)
+        #     current_distance -= distances_df.distance.loc[best_brewery_id]
+        #     total_distance = current_distance + distance_to_start
+        #     break
+        # break
+
+    # report(travel_df, distance_to_start, start_lat, start_lon, total_distance, start_time)
+
+    if GOOGLE_MAPS_EXPORT:
+        google_maps(travel_df)
+
+
+def report(
+    travel_df, distance_to_start, start_lat, start_lon, total_distance, start_time
+):
+    """
+    Print out the results
+    """
     if not travel_df.empty:
-        # Print out the results
-        travel_df = travel_df.join(geocodes_df[["name", "latitude", "longitude", "beer_count"]], on="brewery_id", how="inner")
+        travel_df = travel_df.join(
+            geocodes_df[["name", "latitude", "longitude", "beer_count"]],
+            on="brewery_id",
+            how="inner",
+        )
         print(
             generate_travel_route(
-                travel_df,
-                start_lat,
-                start_lon,
-                distance_to_start,
-                total_distance,
+                travel_df, start_lat, start_lon, distance_to_start, total_distance,
             )
         )
         print(generate_beer_list(travel_df, beers_df))
         print(f"\nProgram took: {time.perf_counter() - start_time} seconds")
-
-        # Google maps has a limitation and can only display limited amout of destinations
-        if travel_df.brewery_id.count() > 15:
-            exit()
-        else:
-            print("\nWould you like to see the travel route in Google Maps?(y/n)")
-            question = input()
-            if question.lower() == "y":
-                webbrowser.open(
-                    construct_google_map_path(
-                        travel_df, start_lat, start_lon
-                    )
-                )
-                exit()
-            else:
-                exit()
 
 
 def generate_travel_route(
@@ -162,6 +195,18 @@ def generate_beer_list(travel_df, beers_df):
         for name in beers_df.loc[[row.brewery_id], "name"].values:
             s += f"     -> {name}\n"
     return s
+
+
+def google_maps(travel_df):
+    """
+    Google maps has a limitation and can only display limited amout of destinations
+    """
+    if travel_df.brewery_id.count() > 15:
+        exit()
+    else:
+        google_path = construct_google_map_path(travel_df, start_lat, start_lon)
+        webbrowser.open(google_path)
+        exit()
 
 
 def construct_google_map_path(travel_df, start_lat, start_lon):
