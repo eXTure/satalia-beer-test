@@ -18,6 +18,7 @@ GOOGLE_MAPS_EXPORT = False
 # Max distance you want to travel, in kilometers
 MAX_DISTANCE = 2000
 
+
 def main():
     start_time = time.perf_counter()
     lat = start_lat
@@ -59,14 +60,13 @@ def main():
         if next_valid_location.empty:
             # Add HOME location to the end of the dataframe
             travel_df = travel_df.append(travel_df.iloc[0])
-            travel_df.iat[-1, 0] = travel_df.tail(2).distance_to_home.values[0]
-            travel_df = travel_df.rename_axis("brewery_id").reset_index()
+            travel_df.iat[-1, 1] = travel_df.tail(2).distance_to_home.values[0]
             break
         else:
             # Add next valid location to the travel dataframe
-            travel_df = pd.concat([travel_df, next_valid_location], join="inner")
-            lat, lon = next_valid_location[["latitude", "longitude"]].values[0]
-            geocodes_df.loc[next_valid_location.index.values[0], "Visited"] = True
+            travel_df = travel_df.append(next_valid_location)
+            lat, lon = next_valid_location[["latitude", "longitude"]].values
+            geocodes_df.loc[next_valid_location.brewery_id, "Visited"] = True
 
     # Show results in terminal
     report(travel_df, start_time)
@@ -105,11 +105,14 @@ def get_next_location(distances_df, km_left):
         apply_distance_calc, args=(start_lat, start_lon), axis=1
     )
     distances_df["ratio"] = distances_df.apply(calculate_ratio, axis=1)
-    best_next_location = pd.Series(distances_df.query("distance < 1000").ratio.idxmax())
-    if distances_df.distance_to_home.loc[best_next_location].values[0] > km_left:
+    best_next_location = distances_df.query("distance < 1000").ratio.idxmax()
+    if distances_df.loc[best_next_location, "distance_to_home"] > km_left:
         return pd.Series(dtype="float64")
     else:
-        return distances_df.loc[best_next_location]
+        distances_df = distances_df.rename_axis("brewery_id").reset_index()
+        return pd.Series(
+            distances_df.loc[distances_df["brewery_id"] == best_next_location].squeeze()
+        )
 
 
 def report(travel_df, start_time):
