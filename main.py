@@ -24,6 +24,16 @@ def main():
     lat = start_lat
     lon = start_lon
     distances_df = pd.DataFrame()
+    home_location = {
+        "brewery_id": 0,
+        "distance": 0,
+        "name": "HOME",
+        "latitude": start_lat,
+        "longitude": start_lon,
+        "beer_count": 0,
+        "distance_to_home": 0,
+        "ratio": 0,
+    }
     travel_df = pd.DataFrame(
         columns=[
             "brewery_id",
@@ -35,18 +45,22 @@ def main():
             "distance_to_home",
             "ratio",
         ],
-        data=[[0, 0, "HOME", start_lat, start_lon, 0, 0, 0]],
+        data=[home_location],
     )
 
     while True:
 
         # Apply the distance calculation formula
         distances_df = (
-            geocodes_df.query("Visited == False")
+            geocodes_df.query("Visited == False")  # .query("distance < 1000")
             .apply(apply_distance_calc, args=(lat, lon), axis=1)
             .rename("distance")
             .to_frame()
         )
+        # Apply max distance limitations
+        one_way_max = MAX_DISTANCE / 2
+        distances_df = distances_df.query("distance < @one_way_max")
+
         # Join additional data from geocodes to distances_df
         distances_df = distances_df.join(
             geocodes_df[["name", "latitude", "longitude", "beer_count"]],
@@ -59,7 +73,7 @@ def main():
 
         if next_valid_location.empty:
             # Add HOME location to the end of the dataframe
-            travel_df = travel_df.append(travel_df.iloc[0])
+            travel_df = travel_df.append([home_location], ignore_index=True)
             travel_df.iat[-1, 1] = travel_df.tail(2).distance_to_home.values[0]
             break
         else:
@@ -105,7 +119,7 @@ def get_next_location(distances_df, km_left):
         apply_distance_calc, args=(start_lat, start_lon), axis=1
     )
     distances_df["ratio"] = distances_df.apply(calculate_ratio, axis=1)
-    best_next_location = distances_df.query("distance < 1000").ratio.idxmax()
+    best_next_location = distances_df.ratio.idxmax()
     if distances_df.loc[best_next_location, "distance_to_home"] > km_left:
         return pd.Series(dtype="float64")
     else:
