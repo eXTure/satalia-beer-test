@@ -72,7 +72,7 @@ def main():
         next_valid_location = get_next_location(distances_df, km_left)
 
         if next_valid_location.empty:
-            # Add HOME location to the end of the dataframe
+            # Add HOME location to the end of the completed dataframe
             travel_df = travel_df.append([home_location], ignore_index=True)
             travel_df.iat[-1, 1] = travel_df.tail(2).distance_to_home.values[0]
             break
@@ -83,7 +83,7 @@ def main():
             geocodes_df.loc[next_valid_location.brewery_id, "Visited"] = True
 
     # Show results in terminal
-    report(travel_df, start_time)
+    print(report(travel_df, start_time))
 
     if GOOGLE_MAPS_EXPORT:
         google_maps(travel_df)
@@ -133,15 +133,16 @@ def report(travel_df, start_time):
     """
     Print out the results
     """
+    report_str = ""
     if len(travel_df.index) > 2:
-        print(generate_travel_route(travel_df))
-        print(generate_beer_list(travel_df, beers_df))
-        print(f"\nProgram took: {time.perf_counter() - start_time} seconds")
+        report_str += generate_travel_route(travel_df)
+        report_str += generate_beer_list(travel_df, beers_df)
+        report_str += f"\nProgram took: {time.perf_counter() - start_time} seconds"
+        return report_str
     else:
-        print(
-            f"Sorry, no breweries within {MAX_DISTANCE}km from this starting location."
-        )
-        print(f"\nProgram took: {time.perf_counter() - start_time} seconds")
+        report_str += f"Sorry, no breweries within {MAX_DISTANCE}km from this starting location."
+        report_str += f"\nProgram took: {time.perf_counter() - start_time} seconds"
+        return report_str
 
 
 def generate_travel_route(travel_df):
@@ -164,7 +165,7 @@ def generate_beer_list(travel_df, beers_df):
     Format a detailed list of beer types collected on the travel route
     """
     s = ""
-    s += f"Collected {travel_df.beer_count.sum()} beer types:\n"
+    s += f"\nCollected {travel_df.beer_count.sum()} beer types:\n"
     for row in travel_df.query("brewery_id != 0").itertuples():
         for name in beers_df.loc[[row.brewery_id], "name"].values:
             s += f"     -> {name}\n"
