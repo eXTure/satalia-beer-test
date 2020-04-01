@@ -10,55 +10,99 @@ from main import construct_google_map_path
 
 
 def test_calculate_distance():
-    pass
-
-
-def test_apply_distance_calc():
-    pass
-
-
-def test_calculate_ratio():
-    pass
-
-
-def test_get_next_location():
-    pass
+    lat1, lon1 = 51.355468, 11.100790
+    lat2, lon2 = 51.268215, 12.276850
+    result = calculate_distance(lat1, lon1, lat2, lon2)
+    expected = 82
+    assert result == expected
 
 
 def test_generate_travel_route():
-    travel_df = pd.DataFrame(columns=["brewery_id", "distance"], data=[[0, 5], [1, 7]])
-    geocodes_df = pd.DataFrame(
-        columns=["brewery_id", "latitude", "longitude"], data=[[0, 1, 2], [1, 3, 4]]
+    travel_df = pd.DataFrame(
+        columns=[
+            "brewery_id",
+            "distance",
+            "name",
+            "latitude",
+            "longitude",
+            "beer_count",
+            "distance_to_home",
+            "ratio",
+        ],
+        data=[
+            [0, 0, "HOME", 21, 51, 0, 0, 0],
+            [22, 200, "Kaunas", 22, 52, 1, 200, 1],
+            [33, 100, "Vilnius", 22, 53, 2, 300, 2],
+            [0, 300, "HOME", 21, 51, 0, 600, 0],
+        ],
     )
-    breweries_df = pd.DataFrame(columns=["name"], data=[["Kaunas"], ["Vilnius"]])
     formatted_string = generate_travel_route(travel_df)
 
     expected = (
-        ""
         "Found 2 beer factories:\n"
-        "-> HOME: 10 12\n"
-        "-> [0] Kaunas: 1 2 Distance: 5 km.\n"
-        "-> [1] Vilnius: 3 4 Distance: 7 km.\n"
-        "<- HOME: 10, 12 Distance: 5 km.\n\n"
-        "Total distance: 10 km.\n"
+        "-> [0] HOME: 21 51 Distance: 0 km.\n"
+        "-> [22] Kaunas: 22 52 Distance: 200 km.\n"
+        "-> [33] Vilnius: 22 53 Distance: 100 km.\n"
+        "-> [0] HOME: 21 51 Distance: 300 km.\n"
+        "\nTotal distance: 600 km.\n"
     )
 
     assert formatted_string == expected
 
 
 def test_generate_beer_list():
-    travel_df = pd.DataFrame(columns=["brewery_id"], data=[[0], [1]])
+    travel_df = pd.DataFrame(
+        columns=[
+            "brewery_id",
+            "distance",
+            "name",
+            "latitude",
+            "longitude",
+            "beer_count",
+            "distance_to_home",
+            "ratio",
+        ],
+        data=[
+            [0, 0, "HOME", 21, 51, 0, 0, 0],
+            [22, 200, "Kaunas", 22, 52, 1, 200, 1],
+            [33, 100, "Vilnius", 22, 53, 2, 300, 2],
+            [0, 300, "HOME", 21, 51, 0, 600, 0],
+        ],
+    )
     beers_df = pd.DataFrame(
-        columns=["brewery_id", "name"], data=[[0, "Pilsner"], [1, "Weissbier"]]
+        columns=["brewery_id", "name"], data=[[22, "Pilsner"], [33, "Weissbier"], [33, "Dark"]]
     )
     formatted_string = generate_beer_list(travel_df, beers_df)
-    expected = "Collected 2 beer types:\n" "     -> Pilsner\n" "     -> Weissbier\n"
-
+    expected = (
+        "\nCollected 3 beer types:\n"
+        "     -> Pilsner\n"
+        "     -> Weissbier\n"
+        "     -> Dark\n"
+    )
+    
     assert formatted_string == expected
 
 
 def test_construct_google_map_path():
-    travel_df = pd.DataFrame(columns=["brewery_id"], data=[[0], [1]])
-    geocodes_df = pd.DataFrame(columns=["latitude", "longitude"], data=[[1, 3], [3, 4]])
+    travel_df = pd.DataFrame(
+        columns=[
+            "brewery_id",
+            "distance",
+            "name",
+            "latitude",
+            "longitude",
+            "beer_count",
+            "distance_to_home",
+            "ratio",
+        ],
+        data=[
+            [0, 0, "HOME", 21, 51, 0, 0, 0],
+            [22, 200, "Kaunas", 22, 52, 1, 200, 1],
+            [33, 100, "Vilnius", 22, 53, 2, 300, 2],
+            [0, 300, "HOME", 21, 51, 0, 600, 0],
+        ],
+    )
     path = construct_google_map_path(travel_df)
-    assert path == "http://www.google.com/maps/dir/10,12/1,3/3,4/10,12/"
+    expected = "http://www.google.com/maps/dir/21,51/22,52/22,53/21,51/"
+    
+    assert path == expected
