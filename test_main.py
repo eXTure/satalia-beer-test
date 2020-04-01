@@ -1,8 +1,28 @@
 import pytest
 import pandas as pd
-from main import construct_google_map_path
+from main import calculate_distance
+from main import apply_distance_calc
+from main import calculate_ratio
+from main import get_next_location
 from main import generate_travel_route
 from main import generate_beer_list
+from main import construct_google_map_path
+
+
+def test_calculate_distance():
+    pass
+
+
+def test_apply_distance_calc():
+    pass
+
+
+def test_calculate_ratio():
+    pass
+
+
+def test_get_next_location():
+    pass
 
 
 def test_generate_travel_route():
@@ -11,9 +31,7 @@ def test_generate_travel_route():
         columns=["brewery_id", "latitude", "longitude"], data=[[0, 1, 2], [1, 3, 4]]
     )
     breweries_df = pd.DataFrame(columns=["name"], data=[["Kaunas"], ["Vilnius"]])
-    formatted_string = generate_travel_route(
-        travel_df, geocodes_df, breweries_df, 10, 12, 5, 10
-    )
+    formatted_string = generate_travel_route(travel_df)
 
     expected = (
         ""
@@ -42,5 +60,5 @@ def test_generate_beer_list():
 def test_construct_google_map_path():
     travel_df = pd.DataFrame(columns=["brewery_id"], data=[[0], [1]])
     geocodes_df = pd.DataFrame(columns=["latitude", "longitude"], data=[[1, 3], [3, 4]])
-    path = construct_google_map_path(travel_df, geocodes_df, 10, 12)
+    path = construct_google_map_path(travel_df)
     assert path == "http://www.google.com/maps/dir/10,12/1,3/3,4/10,12/"
