@@ -72,6 +72,7 @@ def test_generate_beer_list():
     beers_df = pd.DataFrame(
         columns=["brewery_id", "name"], data=[[22, "Pilsner"], [33, "Weissbier"], [33, "Dark"]]
     )
+    beers_df = beers_df.set_index("brewery_id")
     formatted_string = generate_beer_list(travel_df, beers_df)
     expected = (
         "\nCollected 3 beer types:\n"
