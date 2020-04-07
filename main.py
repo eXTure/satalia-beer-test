@@ -1,12 +1,9 @@
 import argparse
 import csv
-import sqlite3
 import sys
 import time
 import webbrowser
-import pysnooper
 import pandas as pd
-import pytest
 from math import asin, cos, radians, sin, sqrt
 
 # Radius of earth in kilometers.
